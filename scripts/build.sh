@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# CI verification: LAB v1.1 diagnostic storage fix
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
