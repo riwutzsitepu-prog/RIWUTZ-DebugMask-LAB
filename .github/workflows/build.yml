@@ -47,5 +47,5 @@ jobs:
       - name: Upload flashable ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RIWUTZ_PerApp_DebugMask_LAB_v1.0
-          path: dist/RIWUTZ_PerApp_DebugMask_LAB_v1.0.zip
+          name: RIWUTZ_PerApp_DebugMask_LAB_v1.1
+          path: dist/RIWUTZ_PerApp_DebugMask_LAB_v1.1.zip
