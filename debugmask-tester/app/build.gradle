@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.riwutz.debugmasklab'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.riwutz.debugmasklab'
+        minSdk 23
+        targetSdk 28
+        versionCode 1
+        versionName '1.0-lab'
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
