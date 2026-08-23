@@ -44,7 +44,7 @@ done
 cp -a "$TEMPLATE/." "$STAGE/"
 cp "$MODULE/libs/arm64-v8a/libriwutz_debugmask.so" "$STAGE/zygisk/arm64-v8a.so"
 cp "$MODULE/libs/armeabi-v7a/libriwutz_debugmask.so" "$STAGE/zygisk/armeabi-v7a.so"
-chmod 0755 "$STAGE/action.sh"
+chmod 0755 "$STAGE/action.sh" "$STAGE/customize.sh"
 
 rm -f "$OUT"
 (
