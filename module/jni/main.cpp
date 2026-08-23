@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include "zygisk.hpp"
 #include "target_package.h"
 
