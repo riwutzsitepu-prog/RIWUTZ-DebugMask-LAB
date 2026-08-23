@@ -1,0 +1,58 @@
+name: Build RIWUTZ DebugMask Tester APK
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'debugmask-tester/**'
+      - '.github/workflows/build-tester-apk.yml'
+  push:
+    paths:
+      - 'debugmask-tester/**'
+      - '.github/workflows/build-tester-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Setup Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build debug APK
+        working-directory: debugmask-tester
+        run: gradle --no-daemon assembleDebug
+
+      - name: Stage APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp debugmask-tester/app/build/outputs/apk/debug/app-debug.apk dist/RIWUTZ_DebugMask_Tester_v1.0.apk
+          sha256sum dist/RIWUTZ_DebugMask_Tester_v1.0.apk | tee dist/SHA256SUMS.txt
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RIWUTZ_DebugMask_Tester_v1.0
+          path: |
+            dist/RIWUTZ_DebugMask_Tester_v1.0.apk
+            dist/SHA256SUMS.txt
