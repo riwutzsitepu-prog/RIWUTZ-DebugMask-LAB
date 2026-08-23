@@ -1,0 +1,45 @@
+name: Build RIWUTZ DebugMask LAB
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'module/**'
+      - 'module_template/**'
+      - 'scripts/**'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "ndk;26.3.11579264"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.3.11579264" >> "$GITHUB_ENV"
+
+      - name: Build flashable module
+        shell: bash
+        run: |
+          chmod +x scripts/*.sh
+          JOBS=2 ./scripts/build.sh
+
+      - name: Upload flashable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RIWUTZ_PerApp_DebugMask_LAB_v1.0
+          path: dist/RIWUTZ_PerApp_DebugMask_LAB_v1.0.zip
