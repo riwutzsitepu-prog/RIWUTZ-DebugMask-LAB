@@ -1,0 +1,6 @@
+id=riwutz_perapp_debugmask_lab
+name=RIWUTZ Per-App Debug Mask LAB
+version=1.0-lab
+versionCode=10
+author=RIWUTZ
+description=Per-app Zygisk SystemProperties visibility lab. Does not disable ADB globally. Target default: com.riwutz.debugmasklab
