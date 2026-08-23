@@ -1,6 +1,6 @@
 id=riwutz_perapp_debugmask_lab
 name=RIWUTZ Per-App Debug Mask LAB
-version=1.0-lab
-versionCode=10
+version=1.1-lab
+versionCode=11
 author=RIWUTZ
-description=Per-app Zygisk SystemProperties visibility lab. Does not disable ADB globally. Target default: com.riwutz.debugmasklab
+description=Per-app Zygisk SystemProperties visibility lab. Does not disable ADB globally. Target default: com.riwutz.debugmasklab. Diagnostic storage output fixed for Android 10 root managers.
