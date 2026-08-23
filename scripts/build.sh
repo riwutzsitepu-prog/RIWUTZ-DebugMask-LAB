@@ -6,7 +6,7 @@ MODULE="$ROOT/module"
 TEMPLATE="$ROOT/module_template"
 DIST="$ROOT/dist"
 STAGE="$DIST/stage"
-OUT="$DIST/RIWUTZ_PerApp_DebugMask_LAB_v1.0.zip"
+OUT="$DIST/RIWUTZ_PerApp_DebugMask_LAB_v1.1.zip"
 
 "$ROOT/scripts/fetch_zygisk_header.sh"
 
