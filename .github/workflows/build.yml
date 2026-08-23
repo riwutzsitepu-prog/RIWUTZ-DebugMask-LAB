@@ -8,6 +8,12 @@ on:
       - 'module_template/**'
       - 'scripts/**'
       - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'module/**'
+      - 'module_template/**'
+      - 'scripts/**'
+      - '.github/workflows/build.yml'
 
 jobs:
   build:
