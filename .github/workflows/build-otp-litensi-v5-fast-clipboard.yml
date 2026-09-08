@@ -1,0 +1,281 @@
+name: Build OTP Litensi V5 Fast Clipboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-otp-litensi-v5-fast-clipboard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Generate Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf otpapp
+          mkdir -p otpapp/app/src/main/java/com/riwutz/otpv5
+          mkdir -p otpapp/app/src/main/res/values otpapp/app/src/main/res/drawable otpapp/app/src/main/res/mipmap-anydpi otpapp/app/src/main/res/mipmap-anydpi-v26
+
+          cat > otpapp/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='OTPLitensiV5'
+          include ':app'
+          EOF
+
+          cat > otpapp/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.7.3' apply false }
+          EOF
+
+          cat > otpapp/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.riwutz.otpv5'
+            compileSdk 35
+            defaultConfig { applicationId 'com.riwutz.otpv5'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.0' }
+            buildTypes { release { minifyEnabled false; shrinkResources false } }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+          }
+          EOF
+
+          cat > otpapp/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+            <application android:allowBackup="true" android:hardwareAccelerated="true" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:label="OTP" android:theme="@style/AppTheme" android:usesCleartextTraffic="true">
+              <activity android:name=".MainActivity" android:exported="true" android:configChanges="keyboard|keyboardHidden|orientation|screenSize">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > otpapp/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+              <item name="android:statusBarColor">#000000</item>
+              <item name="android:navigationBarColor">#000000</item>
+              <item name="android:windowLightStatusBar">false</item>
+              <item name="android:colorAccent">#FFD633</item>
+              <item name="android:windowNoTitle">true</item>
+            </style>
+            <color name="icon_bg">#000000</color>
+          </resources>
+          EOF
+
+          cat > otpapp/app/src/main/res/drawable/otp_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#000000" android:strokeColor="#FFD633" android:strokeWidth="4" android:pathData="M54,4 A50,50 0,1 1,53.9 4"/>
+            <path android:fillColor="#141414" android:strokeColor="#FFD633" android:strokeWidth="2.5" android:pathData="M54,20 L78,29 L75,62 C73,77 64,87 54,92 C44,87 35,77 33,62 L30,29 Z"/>
+            <path android:fillColor="#FFD633" android:pathData="M47,31 L47,26 C47,21 50,18 54,18 C58,18 61,21 61,26 L61,31 L64,31 L64,42 L44,42 L44,31 Z M50,31 L58,31 L58,26 C58,23.5 56.5,22 54,22 C51.5,22 50,23.5 50,26 Z"/>
+            <path android:fillColor="#00000000" android:strokeColor="#FFD633" android:strokeWidth="4" android:strokeLineCap="round" android:pathData="M27,50 C21,50 18,54 18,60 C18,66 21,70 27,70 C33,70 36,66 36,60 C36,54 33,50 27,50 Z M42,50 L60,50 M51,50 L51,70 M66,70 L66,50 L76,50 C82,50 85,53 85,58 C85,63 82,66 76,66 L66,66"/>
+            <path android:fillColor="#00000000" android:strokeColor="#FFD633" android:strokeWidth="2" android:pathData="M40,78 L48,78 L51,73 L55,83 L59,76 L62,78 L70,78"/>
+          </vector>
+          EOF
+
+          cat > otpapp/app/src/main/res/mipmap-anydpi/ic_launcher.xml <<'EOF'
+          <inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/otp_foreground" android:inset="0dp"/>
+          EOF
+          cp otpapp/app/src/main/res/mipmap-anydpi/ic_launcher.xml otpapp/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml
+          cat > otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/icon_bg"/><foreground android:drawable="@drawable/otp_foreground"/></adaptive-icon>
+          EOF
+          cp otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          cat > otpapp/app/src/main/java/com/riwutz/otpv5/MainActivity.java <<'EOF'
+          package com.riwutz.otpv5;
+
+          import android.annotation.SuppressLint;
+          import android.app.Activity;
+          import android.content.ClipData;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.ViewGroup;
+          import android.webkit.CookieManager;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+            private static final String HOME="https://litensi.id/";
+            private static final String PREFS="otp_state";
+            private static final String LAST="last_url";
+            private static final String COOKIES="cookie_vault";
+            private static final String WEBSTATE="web_state";
+            private static final String FIXED_UA="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Mobile Safari/537.36";
+            private WebView w;
+            private SharedPreferences p;
+            private CookieManager cm;
+
+            @SuppressLint({"SetJavaScriptEnabled","JavascriptInterface"})
+            @Override public void onCreate(Bundle b){
+              super.onCreate(b);
+              p=getSharedPreferences(PREFS,MODE_PRIVATE);
+              w=new WebView(this);
+              w.setLayoutParams(new ViewGroup.LayoutParams(-1,-1));
+              setContentView(w);
+
+              WebSettings s=w.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setDatabaseEnabled(true);
+              s.setCacheMode(WebSettings.LOAD_DEFAULT);
+              s.setLoadsImagesAutomatically(true);
+              s.setLoadWithOverviewMode(false);
+              s.setUseWideViewPort(true);
+              s.setSupportZoom(false);
+              s.setBuiltInZoomControls(false);
+              s.setDisplayZoomControls(false);
+              s.setSaveFormData(true);
+              s.setMediaPlaybackRequiresUserGesture(false);
+              s.setJavaScriptCanOpenWindowsAutomatically(true);
+              s.setUserAgentString(FIXED_UA);
+
+              cm=CookieManager.getInstance();
+              cm.setAcceptCookie(true);
+              if(Build.VERSION.SDK_INT>=21) cm.setAcceptThirdPartyCookies(w,true);
+              restoreCookies();
+
+              w.addJavascriptInterface(new Bridge(),"OTPBridge");
+              w.setWebChromeClient(new WebChromeClient());
+              w.setWebViewClient(new WebViewClient(){
+                @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return route(r.getUrl().toString());}
+                @Override public boolean shouldOverrideUrlLoading(WebView v,String u){return route(u);}
+                @Override public void onPageFinished(WebView v,String u){
+                  super.onPageFinished(v,u);
+                  if(ok(u)){
+                    saveUrl(u);
+                    backupCookies(u);
+                    injectLightweightHooks();
+                  }
+                  flush();
+                }
+              });
+
+              String start=p.getString(LAST,HOME);
+              if(!ok(start)||authUrl(start)) start=HOME;
+              final String first=start;
+              w.postDelayed(new Runnable(){public void run(){w.loadUrl(first);}},180);
+            }
+
+            private boolean ok(String u){try{Uri x=Uri.parse(u);String h=x.getHost();return "https".equalsIgnoreCase(x.getScheme())&&h!=null&&(h.equalsIgnoreCase("litensi.id")||h.toLowerCase().endsWith(".litensi.id"));}catch(Exception e){return false;}}
+            private boolean authUrl(String u){String x=u==null?"":u.toLowerCase();return x.contains("/login")||x.contains("/logout");}
+            private boolean route(String u){if(ok(u))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(u)));}catch(Exception ignored){}return true;}
+            private void saveUrl(String u){if(ok(u)&&!authUrl(u))p.edit().putString(LAST,u).apply();}
+            private void flush(){if(cm!=null&&Build.VERSION.SDK_INT>=21)cm.flush();}
+
+            private void backupCookies(String u){
+              try{
+                String c=cm.getCookie(HOME);
+                if((c==null||c.length()==0)&&ok(u))c=cm.getCookie(u);
+                if(c!=null&&c.length()>0)p.edit().putString(COOKIES,c).apply();
+              }catch(Exception ignored){}
+            }
+
+            private void restoreCookies(){
+              try{
+                String all=p.getString(COOKIES,"");
+                if(all==null||all.length()==0)return;
+                String[] parts=all.split(";\\s*");
+                for(String part:parts){
+                  int i=part.indexOf('=');
+                  if(i>0){
+                    String pair=part.substring(0,i).trim()+"="+part.substring(i+1).trim();
+                    cm.setCookie(HOME,pair+"; Path=/; Secure; SameSite=Lax");
+                  }
+                }
+                flush();
+              }catch(Exception ignored){}
+            }
+
+            private void injectLightweightHooks(){
+              String js="(function(){try{"+
+                "if(window.__otpV5)return;window.__otpV5=1;"+
+                "var saved=OTPBridge.getWebState();if(saved){try{var o=JSON.parse(saved);if(o&&o.l){for(var k in o.l){if(localStorage.getItem(k)===null)localStorage.setItem(k,o.l[k]);}}}catch(e){}}"+
+                "if(location.pathname.toLowerCase().indexOf('/login')>=0){var b=document.querySelector('input[name=remember]')||document.querySelector('input[name=remember_me]')||document.querySelector('input[type=checkbox]');if(b&&!b.checked){b.checked=true;b.setAttribute('checked','checked');b.dispatchEvent(new Event('change',{bubbles:true}));}}"+
+                "function nativeCopy(t){try{OTPBridge.copyText(String(t==null?'':t));return Promise.resolve();}catch(e){return Promise.reject(e);}}"+
+                "try{if(navigator.clipboard){try{Object.defineProperty(navigator.clipboard,'writeText',{value:nativeCopy,configurable:true});}catch(e){try{navigator.clipboard.writeText=nativeCopy;}catch(x){}}}else{Object.defineProperty(navigator,'clipboard',{value:{writeText:nativeCopy},configurable:true});}}catch(e){}"+
+                "var oldExec=document.execCommand?document.execCommand.bind(document):null;if(oldExec){document.execCommand=function(c){if(String(c).toLowerCase()==='copy'){try{var a=document.activeElement,t='';if(a&&typeof a.value==='string'){var s=a.selectionStart,e=a.selectionEnd;if(typeof s==='number'&&typeof e==='number'&&e>s)t=a.value.substring(s,e);else t=a.value;}if(!t)t=String(window.getSelection?window.getSelection():'');if(t)OTPBridge.copyText(t);}catch(x){}}return oldExec.apply(document,arguments);};}"+
+                "document.addEventListener('copy',function(){try{var t=String(window.getSelection?window.getSelection():'');if(t)OTPBridge.copyText(t);}catch(e){}},true);"+
+                "function saveUrl(){try{OTPBridge.saveUrl(location.href);}catch(e){}}"+
+                "var timer=null;function snapLater(){saveUrl();if(timer)clearTimeout(timer);timer=setTimeout(function(){try{var l={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);l[k]=localStorage.getItem(k);}OTPBridge.saveWebState(JSON.stringify({l:l}));}catch(e){}},4000);}"+
+                "var ps=history.pushState,rs=history.replaceState;history.pushState=function(){var r=ps.apply(this,arguments);snapLater();return r;};history.replaceState=function(){var r=rs.apply(this,arguments);snapLater();return r;};"+
+                "addEventListener('popstate',saveUrl);addEventListener('hashchange',saveUrl);addEventListener('pagehide',snapLater);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')snapLater();});"+
+                "snapLater();"+
+                "}catch(e){}})();";
+              if(Build.VERSION.SDK_INT>=19)w.evaluateJavascript(js,null);else w.loadUrl("javascript:"+js);
+            }
+
+            public class Bridge{
+              @JavascriptInterface public void saveUrl(String u){saveUrl(u);backupCookies(u);}
+              @JavascriptInterface public void saveWebState(String x){if(x!=null&&x.length()<=131072)p.edit().putString(WEBSTATE,x).apply();}
+              @JavascriptInterface public String getWebState(){return p.getString(WEBSTATE,"");}
+              @JavascriptInterface public boolean copyText(String t){
+                try{
+                  ClipboardManager cb=(ClipboardManager)getSystemService(Context.CLIPBOARD_SERVICE);
+                  if(cb==null)return false;
+                  cb.setPrimaryClip(ClipData.newPlainText("OTP",t==null?"":t));
+                  return true;
+                }catch(Exception e){return false;}
+              }
+            }
+
+            private void saveNow(){if(w!=null){String u=w.getUrl();saveUrl(u);backupCookies(u);}}
+            @Override protected void onPause(){saveNow();flush();if(w!=null)w.onPause();super.onPause();}
+            @Override protected void onStop(){saveNow();flush();super.onStop();}
+            @Override protected void onResume(){super.onResume();if(w!=null)w.onResume();}
+            @Override public void onBackPressed(){if(w!=null&&w.canGoBack())w.goBack();else super.onBackPressed();}
+            @Override protected void onDestroy(){saveNow();flush();if(w!=null){w.stopLoading();w.destroy();w=null;}super.onDestroy();}
+          }
+          EOF
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd otpapp
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_V5_FAST_CLIPBOARD.apk"
+          test -s "$GITHUB_WORKSPACE/OTP_Litensi_V5_FAST_CLIPBOARD.apk"
+          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_V5_FAST_CLIPBOARD.apk"
+          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_V5_FAST_CLIPBOARD.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_V5_FAST_CLIPBOARD.sha256"
+
+      - name: Commit APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add OTP_Litensi_V5_FAST_CLIPBOARD.apk OTP_Litensi_V5_FAST_CLIPBOARD.sha256
+          git commit -m 'OTP Litensi V5 fast clipboard APK' || exit 0
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
