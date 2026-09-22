@@ -55,7 +55,7 @@ jobs:
 
           cat > otpbrowser/gradle.properties <<'EOF'
           android.useAndroidX=true
-          android.enableJetifier=true
+          android.enableJetifier=false
           EOF
 
           cat > otpbrowser/build.gradle <<'EOF'
