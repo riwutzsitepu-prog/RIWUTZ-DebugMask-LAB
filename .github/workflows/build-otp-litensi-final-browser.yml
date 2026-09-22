@@ -71,8 +71,8 @@ jobs:
               applicationId 'com.riwutz.otpbrowserfinal'
               minSdk 23
               targetSdk 35
-              versionCode 2
-              versionName '1.1-browser-fallback'
+              versionCode 3
+              versionName '1.2-real-browser'
             }
 
             buildTypes {
@@ -97,14 +97,6 @@ jobs:
                 <action android:name="android.intent.action.VIEW"/>
                 <data android:scheme="https"/>
               </intent>
-              <package android:name="com.android.chrome"/>
-              <package android:name="org.chromium.chrome"/>
-              <package android:name="com.kiwibrowser.browser"/>
-              <package android:name="org.mozilla.firefox"/>
-              <package android:name="com.brave.browser"/>
-              <package android:name="com.microsoft.emmx"/>
-              <package android:name="org.lineageos.jelly"/>
-              <package android:name="com.android.browser"/>
             </queries>
             <application
               android:allowBackup="true"
@@ -172,155 +164,42 @@ jobs:
           cat > otpbrowser/app/src/main/java/com/riwutz/otpbrowserfinal/MainActivity.java <<'EOF'
           package com.riwutz.otpbrowserfinal;
 
-          import android.annotation.SuppressLint;
           import android.app.Activity;
+          import android.content.ActivityNotFoundException;
           import android.content.Intent;
-          import android.content.pm.PackageManager;
-          import android.content.pm.ResolveInfo;
-          import android.graphics.Color;
           import android.net.Uri;
-          import android.os.Build;
           import android.os.Bundle;
-          import android.view.ViewGroup;
-          import android.webkit.CookieManager;
-          import android.webkit.WebResourceRequest;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-
-          import java.util.List;
+          import android.widget.Toast;
 
           public class MainActivity extends Activity {
             private static final String HOME = "https://litensi.id/";
-            private WebView web;
 
             @Override
             protected void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
-              if (!openExternalBrowser()) {
-                openInternalWebView();
-              }
+              openInRealBrowser();
             }
 
-            private boolean openExternalBrowser() {
+            private void openInRealBrowser() {
               Uri uri = Uri.parse(HOME);
-              PackageManager pm = getPackageManager();
+
+              Intent view = new Intent(Intent.ACTION_VIEW);
+              view.setData(uri);
+              view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+              Intent chooser = Intent.createChooser(view, "Buka Litensi dengan browser");
+              chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
               try {
-                Intent generic = new Intent(Intent.ACTION_VIEW, uri);
-                List<ResolveInfo> handlers = pm.queryIntentActivities(generic, PackageManager.MATCH_DEFAULT_ONLY);
-                if (handlers != null && !handlers.isEmpty()) {
-                  if (handlers.size() == 1) {
-                    startActivity(generic);
-                  } else {
-                    startActivity(Intent.createChooser(generic, "Buka Litensi dengan"));
-                  }
-                  finish();
-                  return true;
-                }
-              } catch (Exception ignored) {}
-
-              String[] pkgs = new String[]{
-                "com.android.chrome",
-                "org.chromium.chrome",
-                "com.kiwibrowser.browser",
-                "org.mozilla.firefox",
-                "com.brave.browser",
-                "com.microsoft.emmx",
-                "org.lineageos.jelly",
-                "com.android.browser"
-              };
-
-              for (String pkg : pkgs) {
-                try {
-                  Intent explicit = new Intent(Intent.ACTION_VIEW, uri);
-                  explicit.setPackage(pkg);
-                  if (explicit.resolveActivity(pm) != null) {
-                    startActivity(explicit);
-                    finish();
-                    return true;
-                  }
-                } catch (Exception ignored) {}
+                startActivity(chooser);
+                finish();
+              } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "Tidak ada browser yang bisa membuka HTTPS", Toast.LENGTH_LONG).show();
+                finish();
+              } catch (Exception e) {
+                Toast.makeText(this, "Gagal membuka browser", Toast.LENGTH_LONG).show();
+                finish();
               }
-              return false;
-            }
-
-            @SuppressLint("SetJavaScriptEnabled")
-            private void openInternalWebView() {
-              web = new WebView(this);
-              web.setBackgroundColor(Color.BLACK);
-              web.setLayoutParams(new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-              setContentView(web);
-
-              WebSettings s = web.getSettings();
-              s.setJavaScriptEnabled(true);
-              s.setDomStorageEnabled(true);
-              s.setDatabaseEnabled(true);
-              s.setLoadsImagesAutomatically(true);
-              s.setCacheMode(WebSettings.LOAD_DEFAULT);
-              s.setUseWideViewPort(true);
-              s.setLoadWithOverviewMode(false);
-              s.setJavaScriptCanOpenWindowsAutomatically(true);
-              s.setMediaPlaybackRequiresUserGesture(false);
-              if (Build.VERSION.SDK_INT >= 21) {
-                s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-              }
-
-              CookieManager cm = CookieManager.getInstance();
-              cm.setAcceptCookie(true);
-              if (Build.VERSION.SDK_INT >= 21) {
-                cm.setAcceptThirdPartyCookies(web, true);
-              }
-
-              web.setWebViewClient(new WebViewClient() {
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                  String u = request.getUrl().toString();
-                  return handleUrl(u);
-                }
-
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                  return handleUrl(url);
-                }
-              });
-
-              web.loadUrl(HOME);
-            }
-
-            private boolean handleUrl(String u) {
-              try {
-                Uri uri = Uri.parse(u);
-                String scheme = uri.getScheme();
-                if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                  return false;
-                }
-                startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                return true;
-              } catch (Exception ignored) {
-                return false;
-              }
-            }
-
-            @Override
-            public void onBackPressed() {
-              if (web != null && web.canGoBack()) {
-                web.goBack();
-              } else {
-                super.onBackPressed();
-              }
-            }
-
-            @Override
-            protected void onDestroy() {
-              if (web != null) {
-                web.stopLoading();
-                web.destroy();
-                web = null;
-              }
-              super.onDestroy();
             }
           }
           EOF
@@ -331,17 +210,17 @@ jobs:
           set -euo pipefail
           cd otpbrowser
           gradle --no-daemon :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER_FALLBACK.apk"
-          test -s "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER_FALLBACK.apk"
-          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER_FALLBACK.apk"
-          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER_FALLBACK.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER_FALLBACK.sha256"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_REAL_BROWSER.apk"
+          test -s "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_REAL_BROWSER.apk"
+          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_REAL_BROWSER.apk"
+          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_REAL_BROWSER.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_REAL_BROWSER.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: otp-litensi-final-browser-fallback
+          name: otp-litensi-final-real-browser
           path: |
-            OTP_Litensi_FINAL_BROWSER_FALLBACK.apk
-            OTP_Litensi_FINAL_BROWSER_FALLBACK.sha256
+            OTP_Litensi_FINAL_REAL_BROWSER.apk
+            OTP_Litensi_FINAL_REAL_BROWSER.sha256
           retention-days: 7
 
       - name: Commit APK output
@@ -350,8 +229,8 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add OTP_Litensi_FINAL_BROWSER_FALLBACK.apk OTP_Litensi_FINAL_BROWSER_FALLBACK.sha256
-          git commit -m 'OTP Litensi FINAL browser fallback APK' || exit 0
+          git add OTP_Litensi_FINAL_REAL_BROWSER.apk OTP_Litensi_FINAL_REAL_BROWSER.sha256
+          git commit -m 'OTP Litensi FINAL real-browser APK' || exit 0
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
