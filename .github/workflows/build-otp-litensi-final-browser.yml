@@ -86,6 +86,15 @@ jobs:
               }
             }
 
+            splits {
+              abi {
+                enable true
+                reset()
+                include 'arm64-v8a'
+                universalApk false
+              }
+            }
+
             compileOptions {
               sourceCompatibility JavaVersion.VERSION_17
               targetCompatibility JavaVersion.VERSION_17
@@ -282,7 +291,9 @@ jobs:
           set -euo pipefail
           cd otpbrowser
           gradle --no-daemon :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
+          APK_SRC=$(find app/build/outputs/apk/debug -type f -name '*arm64-v8a*debug.apk' | head -n1)
+          test -n "$APK_SRC"
+          cp "$APK_SRC" "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
           test -s "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
           unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
           sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.sha256"
