@@ -1,0 +1,266 @@
+name: Build OTP Litensi FINAL Browser
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-otp-litensi-final-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Generate Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf otpbrowser
+          mkdir -p otpbrowser/app/src/main/java/com/riwutz/otpbrowserfinal
+          mkdir -p otpbrowser/app/src/main/res/values
+          mkdir -p otpbrowser/app/src/main/res/drawable-nodpi
+          mkdir -p otpbrowser/app/src/main/res/mipmap-anydpi
+          mkdir -p otpbrowser/app/src/main/res/mipmap-anydpi-v26
+
+          cat > otpbrowser/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories { google(); mavenCentral() }
+          }
+          rootProject.name='OTPLitensiFinalBrowser'
+          include ':app'
+          EOF
+
+          cat > otpbrowser/build.gradle <<'EOF'
+          plugins {
+            id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > otpbrowser/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+
+          android {
+            namespace 'com.riwutz.otpbrowserfinal'
+            compileSdk 35
+
+            defaultConfig {
+              applicationId 'com.riwutz.otpbrowserfinal'
+              minSdk 23
+              targetSdk 35
+              versionCode 1
+              versionName '1.0-final-browser'
+            }
+
+            buildTypes {
+              release {
+                minifyEnabled false
+                shrinkResources false
+              }
+            }
+
+            compileOptions {
+              sourceCompatibility JavaVersion.VERSION_1_8
+              targetCompatibility JavaVersion.VERSION_1_8
+            }
+          }
+
+          dependencies {
+            implementation 'androidx.browser:browser:1.10.0'
+          }
+          EOF
+
+          cat > otpbrowser/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <queries>
+              <intent>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"/>
+              </intent>
+            </queries>
+            <application
+              android:allowBackup="true"
+              android:hardwareAccelerated="true"
+              android:icon="@mipmap/ic_launcher"
+              android:roundIcon="@mipmap/ic_launcher_round"
+              android:label="OTP"
+              android:theme="@style/AppTheme">
+              <activity
+                android:name=".MainActivity"
+                android:exported="true"
+                android:launchMode="singleTask">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > otpbrowser/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+              <item name="android:windowActionModeOverlay">true</item>
+              <item name="android:windowNoTitle">true</item>
+              <item name="android:statusBarColor">#000000</item>
+              <item name="android:navigationBarColor">#000000</item>
+              <item name="android:windowBackground">#000000</item>
+            </style>
+            <color name="icon_bg">#000000</color>
+          </resources>
+          EOF
+
+          # exact V6 icon previously approved
+          tr -d '\n\r ' < assets/otp_final_icon.b64 | base64 -d > otpbrowser/app/src/main/res/drawable-nodpi/otp_logo.png
+          file otpbrowser/app/src/main/res/drawable-nodpi/otp_logo.png
+          python3 - <<'PY'
+          from PIL import Image
+          p='otpbrowser/app/src/main/res/drawable-nodpi/otp_logo.png'
+          im=Image.open(p)
+          im.verify()
+          print('ICON_OK')
+          PY
+
+          cat > otpbrowser/app/src/main/res/mipmap-anydpi/ic_launcher.xml <<'EOF'
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+            android:drawable="@drawable/otp_logo"
+            android:inset="10dp"/>
+          EOF
+          cp otpbrowser/app/src/main/res/mipmap-anydpi/ic_launcher.xml otpbrowser/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml
+
+          cat > otpbrowser/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@color/icon_bg"/>
+            <foreground android:drawable="@drawable/otp_logo"/>
+          </adaptive-icon>
+          EOF
+          cp otpbrowser/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml otpbrowser/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          cat > otpbrowser/app/src/main/java/com/riwutz/otpbrowserfinal/MainActivity.java <<'EOF'
+          package com.riwutz.otpbrowserfinal;
+
+          import android.app.Activity;
+          import android.content.ActivityNotFoundException;
+          import android.content.Intent;
+          import android.graphics.Color;
+          import android.net.Uri;
+          import android.os.Bundle;
+
+          import androidx.browser.customtabs.CustomTabColorSchemeParams;
+          import androidx.browser.customtabs.CustomTabsClient;
+          import androidx.browser.customtabs.CustomTabsIntent;
+
+          public class MainActivity extends Activity {
+            private static final String HOME = "https://litensi.id/";
+            private boolean launched = false;
+
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              launchSite();
+            }
+
+            @Override
+            protected void onNewIntent(Intent intent) {
+              super.onNewIntent(intent);
+              setIntent(intent);
+              launchSite();
+            }
+
+            private void launchSite() {
+              if (launched) return;
+              launched = true;
+
+              Uri uri = Uri.parse(HOME);
+
+              CustomTabColorSchemeParams dark = new CustomTabColorSchemeParams.Builder()
+                .setToolbarColor(Color.BLACK)
+                .setNavigationBarColor(Color.BLACK)
+                .setNavigationBarDividerColor(Color.BLACK)
+                .build();
+
+              CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder()
+                .setDefaultColorSchemeParams(dark)
+                .setColorScheme(CustomTabsIntent.COLOR_SCHEME_DARK)
+                .setShowTitle(false)
+                .setUrlBarHidingEnabled(true)
+                .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
+                .build();
+
+              String provider = CustomTabsClient.getPackageName(this, null);
+              if (provider != null) {
+                customTabsIntent.intent.setPackage(provider);
+              }
+
+              try {
+                customTabsIntent.launchUrl(this, uri);
+              } catch (ActivityNotFoundException e) {
+                try {
+                  startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                } catch (Exception ignored) {
+                }
+              }
+            }
+
+            @Override
+            protected void onResume() {
+              super.onResume();
+              if (launched) {
+                // Custom Tab closed: reset so tapping app icon opens it again.
+                launched = false;
+              }
+            }
+          }
+          EOF
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd otpbrowser
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER.apk"
+          test -s "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER.apk"
+          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER.apk"
+          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_BROWSER.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: otp-litensi-final-browser
+          path: |
+            OTP_Litensi_FINAL_BROWSER.apk
+            OTP_Litensi_FINAL_BROWSER.sha256
+          retention-days: 7
+
+      - name: Commit APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add OTP_Litensi_FINAL_BROWSER.apk OTP_Litensi_FINAL_BROWSER.sha256
+          git commit -m 'OTP Litensi FINAL browser APK' || exit 0
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
