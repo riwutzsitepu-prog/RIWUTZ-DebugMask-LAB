@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/build-otp-litensi-final-default-browser.yml'
+      - '.github/workflows/build-otp-litensi-final-browser.yml'
   workflow_dispatch:
 
 permissions:
