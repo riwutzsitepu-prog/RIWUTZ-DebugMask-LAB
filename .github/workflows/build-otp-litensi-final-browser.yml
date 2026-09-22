@@ -93,7 +93,7 @@ jobs:
           }
 
           dependencies {
-            implementation "org.mozilla.geckoview:geckoview-nightly:158.0.20260918113649"
+            implementation "org.mozilla.geckoview:geckoview-nightly:153.0.20260606213347"
           }
           EOF
 
