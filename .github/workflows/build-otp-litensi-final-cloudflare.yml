@@ -218,7 +218,7 @@ jobs:
                 if((all==null||all.length()==0)&&isLitensi(u))all=cm.getCookie(u);
                 if(all==null||all.length()==0)return;
                 StringBuilder keep=new StringBuilder();
-                for(String part:all.split(";\s*")){
+                for(String part:all.split(";")){
                   int i=part.indexOf('='); if(i<=0)continue;
                   String name=part.substring(0,i).trim();
                   if(cloudflareCookieName(name))continue;
@@ -233,7 +233,7 @@ jobs:
               try{
                 String all=p.getString(COOKIES,"");
                 if(all==null||all.length()==0)return;
-                for(String part:all.split(";\s*")){
+                for(String part:all.split(";")){
                   int i=part.indexOf('='); if(i<=0)continue;
                   String name=part.substring(0,i).trim();
                   if(cloudflareCookieName(name))continue;
