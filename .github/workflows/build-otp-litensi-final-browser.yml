@@ -282,17 +282,17 @@ jobs:
           set -euo pipefail
           cd otpbrowser
           gradle --no-daemon :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11.apk"
-          test -s "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11.apk"
-          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11.apk"
-          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11.sha256"
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
+          test -s "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
+          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk"
+          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_GECKOVIEW_A11_ARM64.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: otp-litensi-geckoview-a11
+          name: otp-litensi-geckoview-a11-arm64
           path: |
-            OTP_Litensi_GECKOVIEW_A11.apk
-            OTP_Litensi_GECKOVIEW_A11.sha256
+            OTP_Litensi_GECKOVIEW_A11_ARM64.apk
+            OTP_Litensi_GECKOVIEW_A11_ARM64.sha256
           retention-days: 7
 
       - name: Commit APK output
@@ -301,7 +301,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add OTP_Litensi_GECKOVIEW_A11.apk OTP_Litensi_GECKOVIEW_A11.sha256
+          git add OTP_Litensi_GECKOVIEW_A11_ARM64.apk OTP_Litensi_GECKOVIEW_A11_ARM64.sha256
           git commit -m 'OTP Litensi GeckoView A11 APK' || exit 0
           git fetch origin main
           git rebase origin/main
