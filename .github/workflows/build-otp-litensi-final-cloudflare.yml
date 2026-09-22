@@ -1,0 +1,318 @@
+name: Build OTP Litensi FINAL Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-otp-litensi-final-cloudflare.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Generate Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf otpapp
+          mkdir -p otpapp/app/src/main/java/com/riwutz/otpfinal
+          mkdir -p otpapp/app/src/main/res/values otpapp/app/src/main/res/drawable-nodpi otpapp/app/src/main/res/mipmap-anydpi otpapp/app/src/main/res/mipmap-anydpi-v26
+
+          cat > otpapp/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name='OTPLitensiFinal'
+          include ':app'
+          EOF
+
+          cat > otpapp/build.gradle <<'EOF'
+          plugins { id 'com.android.application' version '8.7.3' apply false }
+          EOF
+
+          cat > otpapp/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+            namespace 'com.riwutz.otpfinal'
+            compileSdk 35
+            defaultConfig { applicationId 'com.riwutz.otpfinal'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.0-final' }
+            buildTypes { release { minifyEnabled false; shrinkResources false } }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+          }
+          EOF
+
+          cat > otpapp/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+            <application android:allowBackup="true" android:hardwareAccelerated="true" android:usesCleartextTraffic="false" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:label="OTP" android:theme="@style/AppTheme">
+              <activity android:name=".MainActivity" android:exported="true" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode">
+                <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          EOF
+
+          cat > otpapp/app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+            <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+              <item name="android:statusBarColor">#000000</item>
+              <item name="android:navigationBarColor">#000000</item>
+              <item name="android:windowLightStatusBar">false</item>
+              <item name="android:colorAccent">#FFD633</item>
+              <item name="android:windowNoTitle">true</item>
+            </style>
+            <color name="icon_bg">#000000</color>
+          </resources>
+          EOF
+
+          echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLQAAAAAElFTkSuQmCC' | base64 -d > otpapp/app/src/main/res/drawable-nodpi/otp_logo.png
+
+          cat > otpapp/app/src/main/res/mipmap-anydpi/ic_launcher.xml <<'EOF'
+          <inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/otp_logo" android:inset="10dp"/>
+          EOF
+          cp otpapp/app/src/main/res/mipmap-anydpi/ic_launcher.xml otpapp/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml
+
+          cat > otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/icon_bg"/><foreground android:drawable="@drawable/otp_logo"/></adaptive-icon>
+          EOF
+          cp otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml otpapp/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          cat > otpapp/app/src/main/java/com/riwutz/otpfinal/MainActivity.java <<'EOF'
+          package com.riwutz.otpfinal;
+
+          import android.annotation.SuppressLint;
+          import android.app.Activity;
+          import android.content.ClipData;
+          import android.content.ClipboardManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.ViewGroup;
+          import android.webkit.CookieManager;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+            private static final String HOME="https://litensi.id/";
+            private static final String PREFS="otp_state";
+            private static final String LAST="last_url";
+            private static final String COOKIES="cookie_vault";
+            private static final String WEBSTATE="web_state";
+            private static final String UA="stable_native_ua";
+            private WebView w;
+            private SharedPreferences p;
+            private CookieManager cm;
+
+            @SuppressLint({"SetJavaScriptEnabled","JavascriptInterface"})
+            @Override public void onCreate(Bundle b){
+              super.onCreate(b);
+              p=getSharedPreferences(PREFS,MODE_PRIVATE);
+              WebView.setWebContentsDebuggingEnabled(false);
+              w=new WebView(this);
+              w.setLayoutParams(new ViewGroup.LayoutParams(-1,-1));
+              setContentView(w);
+
+              WebSettings s=w.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setDatabaseEnabled(true);
+              s.setCacheMode(WebSettings.LOAD_DEFAULT);
+              s.setLoadsImagesAutomatically(true);
+              s.setBlockNetworkLoads(false);
+              s.setAllowContentAccess(true);
+              s.setAllowFileAccess(false);
+              s.setLoadWithOverviewMode(false);
+              s.setUseWideViewPort(true);
+              s.setSupportZoom(false);
+              s.setBuiltInZoomControls(false);
+              s.setDisplayZoomControls(false);
+              s.setSaveFormData(true);
+              s.setMediaPlaybackRequiresUserGesture(false);
+              s.setJavaScriptCanOpenWindowsAutomatically(true);
+              s.setSupportMultipleWindows(false);
+              if(Build.VERSION.SDK_INT>=21) s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+              if(Build.VERSION.SDK_INT>=26) s.setSafeBrowsingEnabled(true);
+
+              String nativeUa=s.getUserAgentString();
+              String stableUa=p.getString(UA,"");
+              if(stableUa==null || stableUa.length()<20){
+                stableUa=nativeUa;
+                p.edit().putString(UA,stableUa).apply();
+              }
+              s.setUserAgentString(stableUa);
+
+              cm=CookieManager.getInstance();
+              cm.setAcceptCookie(true);
+              if(Build.VERSION.SDK_INT>=21) cm.setAcceptThirdPartyCookies(w,true);
+              restoreAppCookies();
+
+              w.addJavascriptInterface(new Bridge(),"OTPBridge");
+              w.setWebChromeClient(new WebChromeClient());
+              w.setWebViewClient(new WebViewClient(){
+                @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return route(r.getUrl().toString());}
+                @Override public boolean shouldOverrideUrlLoading(WebView v,String u){return route(u);}
+                @Override public void onPageFinished(WebView v,String u){
+                  super.onPageFinished(v,u);
+                  if(isLitensi(u)){
+                    saveUrl(u);
+                    backupAppCookies(u);
+                    if(isLogin(u)) injectLoginOnly(); else if(!isCloudflarePath(u)) injectAppHooks();
+                  }
+                  flush();
+                }
+              });
+
+              String start=p.getString(LAST,HOME);
+              if(!isLitensi(start)||isLogin(start)||isCloudflarePath(start)) start=HOME;
+              final String first=start;
+              w.postDelayed(new Runnable(){public void run(){w.loadUrl(first);}},180);
+            }
+
+            private boolean isLitensi(String u){
+              try{Uri x=Uri.parse(u);String h=x.getHost();return "https".equalsIgnoreCase(x.getScheme())&&h!=null&&(h.equalsIgnoreCase("litensi.id")||h.toLowerCase().endsWith(".litensi.id"));}catch(Exception e){return false;}
+            }
+            private boolean isLogin(String u){String x=u==null?"":u.toLowerCase();return x.contains("/login")||x.contains("/logout");}
+            private boolean isCloudflarePath(String u){String x=u==null?"":u.toLowerCase();return x.contains("/cdn-cgi/")||x.contains("challenge-platform");}
+            private boolean isWebScheme(String u){try{String s=Uri.parse(u).getScheme();return s!=null&&(s.equalsIgnoreCase("http")||s.equalsIgnoreCase("https")||s.equalsIgnoreCase("about"));}catch(Exception e){return false;}}
+            private boolean route(String u){
+              if(isWebScheme(u)) return false;
+              try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(u)));}catch(Exception ignored){}
+              return true;
+            }
+            private void saveUrl(String u){if(isLitensi(u)&&!isLogin(u)&&!isCloudflarePath(u))p.edit().putString(LAST,u).apply();}
+            private void flush(){if(cm!=null&&Build.VERSION.SDK_INT>=21)cm.flush();}
+            private boolean cloudflareCookieName(String n){
+              if(n==null)return false;
+              String x=n.trim().toLowerCase();
+              return x.startsWith("cf_")||x.startsWith("__cf")||x.startsWith("_cf")||x.equals("cf_clearance");
+            }
+
+            private void backupAppCookies(String u){
+              try{
+                String all=cm.getCookie(HOME);
+                if((all==null||all.length()==0)&&isLitensi(u))all=cm.getCookie(u);
+                if(all==null||all.length()==0)return;
+                StringBuilder keep=new StringBuilder();
+                for(String part:all.split(";\s*")){
+                  int i=part.indexOf('='); if(i<=0)continue;
+                  String name=part.substring(0,i).trim();
+                  if(cloudflareCookieName(name))continue;
+                  if(keep.length()>0)keep.append("; ");
+                  keep.append(name).append("=").append(part.substring(i+1).trim());
+                }
+                if(keep.length()>0)p.edit().putString(COOKIES,keep.toString()).apply();
+              }catch(Exception ignored){}
+            }
+
+            private void restoreAppCookies(){
+              try{
+                String all=p.getString(COOKIES,"");
+                if(all==null||all.length()==0)return;
+                for(String part:all.split(";\s*")){
+                  int i=part.indexOf('='); if(i<=0)continue;
+                  String name=part.substring(0,i).trim();
+                  if(cloudflareCookieName(name))continue;
+                  String pair=name+"="+part.substring(i+1).trim();
+                  cm.setCookie(HOME,pair+"; Path=/; Secure");
+                }
+                flush();
+              }catch(Exception ignored){}
+            }
+
+            private void injectLoginOnly(){
+              String js="(function(){try{function r(){var b=document.querySelector('input[name=remember]')||document.querySelector('input[name=remember_me]')||document.querySelector('input[type=checkbox]');if(b&&!b.checked){b.click();}}r();setTimeout(r,800);setTimeout(r,2000);}catch(e){}})();";
+              eval(js);
+            }
+
+            private void injectAppHooks(){
+              String js="(function(){try{"+
+                "if(window.__otpFinal)return;window.__otpFinal=1;"+
+                "var saved=OTPBridge.getWebState();if(saved){try{var o=JSON.parse(saved);if(o&&o.l){for(var k in o.l){if(localStorage.getItem(k)===null)localStorage.setItem(k,o.l[k]);}}}catch(e){}}"+
+                "function nativeCopy(t){try{OTPBridge.copyText(String(t==null?'':t));return Promise.resolve();}catch(e){return Promise.reject(e);}}"+
+                "try{if(navigator.clipboard){try{Object.defineProperty(navigator.clipboard,'writeText',{value:nativeCopy,configurable:true});}catch(e){try{navigator.clipboard.writeText=nativeCopy;}catch(x){}}}else{Object.defineProperty(navigator,'clipboard',{value:{writeText:nativeCopy},configurable:true});}}catch(e){}"+
+                "var oldExec=document.execCommand?document.execCommand.bind(document):null;if(oldExec){document.execCommand=function(c){if(String(c).toLowerCase()==='copy'){try{var a=document.activeElement,t='';if(a&&typeof a.value==='string'){var s=a.selectionStart,e=a.selectionEnd;if(typeof s==='number'&&typeof e==='number'&&e>s)t=a.value.substring(s,e);else t=a.value;}if(!t)t=String(window.getSelection?window.getSelection():'');if(t)OTPBridge.copyText(t);}catch(x){}}return oldExec.apply(document,arguments);};}"+
+                "document.addEventListener('copy',function(){try{var t=String(window.getSelection?window.getSelection():'');if(t)OTPBridge.copyText(t);}catch(e){}},true);"+
+                "function saveUrl(){try{OTPBridge.saveUrl(location.href);}catch(e){}}"+
+                "var timer=null;function snapLater(){saveUrl();if(timer)clearTimeout(timer);timer=setTimeout(function(){try{var l={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);l[k]=localStorage.getItem(k);}OTPBridge.saveWebState(JSON.stringify({l:l}));}catch(e){}},4000);}"+
+                "var ps=history.pushState,rs=history.replaceState;history.pushState=function(){var r=ps.apply(this,arguments);snapLater();return r;};history.replaceState=function(){var r=rs.apply(this,arguments);snapLater();return r;};"+
+                "addEventListener('popstate',saveUrl);addEventListener('hashchange',saveUrl);addEventListener('pagehide',snapLater);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')snapLater();});snapLater();"+
+                "}catch(e){}})();";
+              final String code=js;
+              w.postDelayed(new Runnable(){public void run(){if(w!=null)eval(code);}},1200);
+            }
+
+            private void eval(String js){if(w==null)return;if(Build.VERSION.SDK_INT>=19)w.evaluateJavascript(js,null);else w.loadUrl("javascript:"+js);}
+
+            public class Bridge{
+              @JavascriptInterface public void saveUrl(String u){saveUrl(u);backupAppCookies(u);}
+              @JavascriptInterface public void saveWebState(String x){if(x!=null&&x.length()<=131072)p.edit().putString(WEBSTATE,x).apply();}
+              @JavascriptInterface public String getWebState(){return p.getString(WEBSTATE,"");}
+              @JavascriptInterface public boolean copyText(String t){
+                try{ClipboardManager cb=(ClipboardManager)getSystemService(Context.CLIPBOARD_SERVICE);if(cb==null)return false;cb.setPrimaryClip(ClipData.newPlainText("OTP",t==null?"":t));return true;}catch(Exception e){return false;}
+              }
+            }
+
+            private void saveNow(){if(w!=null){String u=w.getUrl();saveUrl(u);backupAppCookies(u);}}
+            @Override protected void onPause(){saveNow();flush();if(w!=null)w.onPause();super.onPause();}
+            @Override protected void onStop(){saveNow();flush();super.onStop();}
+            @Override protected void onResume(){super.onResume();if(w!=null)w.onResume();}
+            @Override public void onBackPressed(){if(w!=null&&w.canGoBack())w.goBack();else super.onBackPressed();}
+            @Override protected void onDestroy(){saveNow();flush();if(w!=null){w.stopLoading();w.destroy();w=null;}super.onDestroy();}
+          }
+          EOF
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd otpapp
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_CLOUDFLARE.apk"
+          test -s "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_CLOUDFLARE.apk"
+          unzip -tq "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_CLOUDFLARE.apk"
+          sha256sum "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_CLOUDFLARE.apk" > "$GITHUB_WORKSPACE/OTP_Litensi_FINAL_CLOUDFLARE.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: otp-litensi-final-cloudflare
+          path: |
+            OTP_Litensi_FINAL_CLOUDFLARE.apk
+            OTP_Litensi_FINAL_CLOUDFLARE.sha256
+          retention-days: 7
+
+      - name: Commit APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add OTP_Litensi_FINAL_CLOUDFLARE.apk OTP_Litensi_FINAL_CLOUDFLARE.sha256
+          git commit -m 'OTP Litensi FINAL Cloudflare APK' || exit 0
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
