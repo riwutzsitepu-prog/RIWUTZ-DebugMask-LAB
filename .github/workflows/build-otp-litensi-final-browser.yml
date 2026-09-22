@@ -49,6 +49,11 @@ jobs:
           include ':app'
           EOF
 
+          cat > otpbrowser/gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOF
+
           cat > otpbrowser/build.gradle <<'EOF'
           plugins {
             id 'com.android.application' version '8.7.3' apply false
