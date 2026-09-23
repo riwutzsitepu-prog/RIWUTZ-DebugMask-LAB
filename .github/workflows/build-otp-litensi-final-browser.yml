@@ -1,4 +1,5 @@
 name: Build OTP Litensi FINAL Browser
+# old icon asset repaired
 
 on:
   push:
