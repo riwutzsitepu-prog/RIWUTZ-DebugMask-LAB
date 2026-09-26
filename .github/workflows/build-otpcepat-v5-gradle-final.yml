@@ -1,0 +1,100 @@
+name: Build OTP Cepat V5 Blue Ring Gradle Final
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-otpcepat-v5-gradle-final.yml'
+      - 'assets/otp_v5_blue_ring_80.png'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Generate exact V4 project
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk '
+            /      - name: Generate Android project/ {seen=1; next}
+            seen && /        run: \|/ {grab=1; next}
+            grab && /      - name: Build APK/ {exit}
+            grab {sub(/^          /, ""); print}
+          ' .github/workflows/build-otpcepat-v4-antilogout.yml > /tmp/generate-v4.sh
+          test -s /tmp/generate-v4.sh
+          bash /tmp/generate-v4.sh
+          test -f otpcepat/app/src/main/java/com/riwutz/otpcepat/MainActivity.java
+
+      - name: Apply V5 blue ring icon only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s assets/otp_v5_blue_ring_80.png
+          file assets/otp_v5_blue_ring_80.png | grep -q 'PNG image data'
+
+          mkdir -p otpcepat/app/src/main/res/drawable-nodpi
+          cp assets/otp_v5_blue_ring_80.png otpcepat/app/src/main/res/drawable-nodpi/otp_v5_blue_ring.png
+
+          cat > otpcepat/app/src/main/res/drawable/otp_blue.xml <<'EOF'
+          <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+            android:src="@drawable/otp_v5_blue_ring"
+            android:gravity="fill" />
+          EOF
+
+          # Preserve the proven V3/V4 12dp inset for both legacy and adaptive icons.
+          grep -q 'android:inset="12dp"' otpcepat/app/src/main/res/drawable/otp_blue_inset.xml
+          grep -q 'android:inset="12dp"' otpcepat/app/src/main/res/mipmap-anydpi/ic_launcher.xml
+
+          sed -i "s/versionCode 4/versionCode 5/" otpcepat/app/build.gradle
+          sed -i "s/versionName '4.0-anti-logout'/versionName '5.0-blue-ring-fix'/" otpcepat/app/build.gradle
+
+      - name: Build and verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd otpcepat
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/OTP_Cepat_V5_BLUE_RING_FIX.apk"
+          cd "$GITHUB_WORKSPACE"
+          test -s OTP_Cepat_V5_BLUE_RING_FIX.apk
+          unzip -tq OTP_Cepat_V5_BLUE_RING_FIX.apk
+          unzip -l OTP_Cepat_V5_BLUE_RING_FIX.apk | grep -q 'otp_v5_blue_ring'
+          sha256sum OTP_Cepat_V5_BLUE_RING_FIX.apk > OTP_Cepat_V5_BLUE_RING_FIX.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: otp-cepat-v5-blue-ring-fix-final
+          path: |
+            OTP_Cepat_V5_BLUE_RING_FIX.apk
+            OTP_Cepat_V5_BLUE_RING_FIX.sha256
+          retention-days: 7
+
+      - name: Commit APK output
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add OTP_Cepat_V5_BLUE_RING_FIX.apk OTP_Cepat_V5_BLUE_RING_FIX.sha256
+          git commit -m 'OTP Cepat V5 blue ring final' || exit 0
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
